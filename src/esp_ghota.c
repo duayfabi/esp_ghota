@@ -90,6 +90,8 @@ ghota_client_handle_t *ghota_init(ghota_config_t *newconfig) {
     strncpy(handle->config.storageFilenameMatch, newconfig->storageFilenameMatch, CONFIG_MAX_FILENAME_LEN);
     strncpy(handle->config.storagePartitionName, newconfig->storagePartitionName, 17);
 
+    handle->config.xCoreID = newconfig->xCoreID;
+
     if (newconfig->hostname == NULL)
         asprintf(&handle->config.hostname, CONFIG_GITHUB_HOSTNAME);
     else
@@ -717,7 +719,7 @@ esp_err_t ghota_start_update_task(ghota_client_handle_t *handle) {
     if (state == eDeleted || state == eInvalid) {
         ESP_LOGD(TAG, "Starting Task to Check for Updates");
 
-        if (xTaskCreate(ghota_task, "ghota_task", 6144, handle, 5, NULL) != pdPASS) {
+        if (xTaskCreatePinnedToCore(ghota_task, "ghota_task", 6144, handle, 5, NULL, handle->config.xCoreID) != pdPASS) {
             ESP_LOGE(TAG, "Failed to Start ghota_task");
             return ESP_FAIL;
         }

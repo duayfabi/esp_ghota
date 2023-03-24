@@ -42,6 +42,7 @@ typedef struct ghota_config_t {
     char *orgname;                                  /*!< Name of the Github organization */
     char *reponame;                                 /*!< Name of the Github repository */
     uint32_t updateInterval;                        /*!< Interval in Minutes to check for updates if using the ghota_start_update_timer function */
+    BaseType_t xCoreID;                             /*!< Core ID on which run the OTA task */
 } ghota_config_t;
 
 typedef struct ghota_client_handle_t ghota_client_handle_t;
