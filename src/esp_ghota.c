@@ -68,6 +68,18 @@ static bool GetFlag(ghota_client_handle_t *handle, enum release_flags flag) {
     handle->result.flags &= ~flag;
 }*/
 
+void memcpy_str(char *dest, const char *src, size_t n) {
+    size_t len = strlen(src);
+
+    if (len < n) {
+        memcpy(dest, src, len);
+        memset(dest + len, 0, n - len);
+    } else {
+        memcpy(dest, src, n-1);
+        dest[n-1] = 0;
+    }
+}
+
 ghota_client_handle_t *ghota_init(ghota_config_t *newconfig) {
     if (!ghota_lock) {
         ghota_lock = xSemaphoreCreateMutex();
@@ -86,9 +98,9 @@ ghota_client_handle_t *ghota_init(ghota_config_t *newconfig) {
     }
 
     bzero(handle, sizeof(ghota_client_handle_t));
-    strncpy(handle->config.fwFilenameMatch, newconfig->fwFilenameMatch, CONFIG_MAX_FILENAME_LEN);
-    strncpy(handle->config.storageFilenameMatch, newconfig->storageFilenameMatch, CONFIG_MAX_FILENAME_LEN);
-    strncpy(handle->config.storagePartitionName, newconfig->storagePartitionName, 17);
+    memcpy_str(handle->config.fwFilenameMatch, newconfig->fwFilenameMatch, CONFIG_MAX_FILENAME_LEN);
+    memcpy_str(handle->config.storageFilenameMatch, newconfig->storageFilenameMatch, CONFIG_MAX_FILENAME_LEN);
+    memcpy_str(handle->config.storagePartitionName, newconfig->storagePartitionName, 17);
 
     handle->config.xCoreID = newconfig->xCoreID;
 
@@ -176,36 +188,29 @@ static void lwjson_callback(lwjson_stream_parser_t *jsp, lwjson_stream_type_t ty
 
     // Get a value corresponsing to "tag_name" key
     if (!GetFlag(handle, GHOTA_RELEASE_GOT_TAG)) {
-        if (jsp->stack_pos >= 2                                // Number of stack entries must be high
-            && jsp->stack[0].type == LWJSON_STREAM_TYPE_OBJECT // First must be object
-            && jsp->stack[1].type == LWJSON_STREAM_TYPE_KEY    // We need key to be before
+        if (jsp->stack_pos >= 2                                 // Number of stack entries must be high
+            && jsp->stack[0].type == LWJSON_STREAM_TYPE_OBJECT  // First must be object
+            && jsp->stack[1].type == LWJSON_STREAM_TYPE_KEY     // We need key to be before
             && strcmp(jsp->stack[1].meta.name, "tag_name") == 0) {
             ESP_LOGD(TAG, "Got key '%s' with value '%s'", jsp->stack[1].meta.name, jsp->data.str.buff);
-            strncpy(handle->result.tagName, jsp->data.str.buff, CONFIG_MAX_FILENAME_LEN);
+            memcpy_str(handle->result.tagName, jsp->data.str.buff, CONFIG_MAX_FILENAME_LEN);
             SetFlag(handle, GHOTA_RELEASE_GOT_TAG);
         }
     }
 
     if (!GetFlag(handle, GHOTA_RELEASE_VALID_FIRMWARE) || !GetFlag(handle, GHOTA_RELEASE_VALID_STORAGE)) {
-        if (jsp->stack_pos == 5
-            && jsp->stack[0].type == LWJSON_STREAM_TYPE_OBJECT
-            && jsp->stack[1].type == LWJSON_STREAM_TYPE_KEY
-            && strcmp(jsp->stack[1].meta.name, "assets") == 0
-            && jsp->stack[2].type == LWJSON_STREAM_TYPE_ARRAY
-            && jsp->stack[3].type == LWJSON_STREAM_TYPE_OBJECT
-            && jsp->stack[4].type == LWJSON_STREAM_TYPE_KEY) {
-
+        if (jsp->stack_pos == 5 && jsp->stack[0].type == LWJSON_STREAM_TYPE_OBJECT && jsp->stack[1].type == LWJSON_STREAM_TYPE_KEY && strcmp(jsp->stack[1].meta.name, "assets") == 0 && jsp->stack[2].type == LWJSON_STREAM_TYPE_ARRAY && jsp->stack[3].type == LWJSON_STREAM_TYPE_OBJECT && jsp->stack[4].type == LWJSON_STREAM_TYPE_KEY) {
             ESP_LOGD(TAG, "Assets Got key '%s' with value '%s'", jsp->stack[jsp->stack_pos - 1].meta.name, jsp->data.str.buff);
 
             if (strcmp(jsp->stack[4].meta.name, "name") == 0) {
                 SetFlag(handle, GHOTA_RELEASE_GOT_BINARY_NAME);
-                strncpy(handle->scratch.name, jsp->data.str.buff, CONFIG_MAX_FILENAME_LEN);
+                memcpy_str(handle->scratch.name, jsp->data.str.buff, CONFIG_MAX_FILENAME_LEN);
                 ESP_LOGD(TAG, "Got Filename for Asset: %s", handle->scratch.name);
             }
 
             if (strcmp(jsp->stack[4].meta.name, "url") == 0) {
                 SetFlag(handle, GHOTA_RELEASE_GOT_BINARY_URL);
-                strncpy(handle->scratch.url, jsp->data.str.buff, CONFIG_MAX_URL_LEN);
+                memcpy_str(handle->scratch.url, jsp->data.str.buff, CONFIG_MAX_URL_LEN);
                 ESP_LOGD(TAG, "Got URL for Asset: %s", handle->scratch.url);
             }
 
@@ -214,14 +219,12 @@ static void lwjson_callback(lwjson_stream_parser_t *jsp, lwjson_stream_type_t ty
                 ESP_LOGD(TAG, "Testing Firmware filenames %s -> %s - Matching Filename against %s and %s", handle->scratch.name, handle->scratch.url, handle->config.fwFilenameMatch, handle->config.storageFilenameMatch);
 
                 // see if the filename matches
-                if (!GetFlag(handle, GHOTA_RELEASE_VALID_FIRMWARE)
-                    && fnmatch(handle->scratch.name, handle->config.fwFilenameMatch, 0) == 0) {
-                    strncpy(handle->result.fwUrl, handle->scratch.url, CONFIG_MAX_URL_LEN);
+                if (!GetFlag(handle, GHOTA_RELEASE_VALID_FIRMWARE) && fnmatch(handle->scratch.name, handle->config.fwFilenameMatch, 0) == 0) {
+                    memcpy_str(handle->result.fwUrl, handle->scratch.url, CONFIG_MAX_URL_LEN);
                     ESP_LOGD(TAG, "Valid Firmware Found: %s - %s", handle->scratch.name, handle->result.fwUrl);
                     SetFlag(handle, GHOTA_RELEASE_VALID_FIRMWARE);
-                } else if (!GetFlag(handle, GHOTA_RELEASE_VALID_STORAGE)
-                            && fnmatch(handle->scratch.name, handle->config.storageFilenameMatch, 0) == 0) {
-                    strncpy(handle->result.storageUrl, handle->scratch.url, CONFIG_MAX_URL_LEN);
+                } else if (!GetFlag(handle, GHOTA_RELEASE_VALID_STORAGE) && fnmatch(handle->scratch.name, handle->config.storageFilenameMatch, 0) == 0) {
+                    memcpy_str(handle->result.storageUrl, handle->scratch.url, CONFIG_MAX_URL_LEN);
                     ESP_LOGD(TAG, "Valid Storage Binary Found: %s - %s", handle->scratch.name, handle->result.storageUrl);
                     SetFlag(handle, GHOTA_RELEASE_VALID_STORAGE);
                 }
@@ -771,7 +774,7 @@ esp_err_t ghota_start_update_timer(ghota_client_handle_t *handle) {
     return ESP_OK;
 }
 
-char* ghota_get_event_str(ghota_event_e event) {
+char *ghota_get_event_str(ghota_event_e event) {
     switch (event) {
         case GHOTA_EVENT_START_CHECK:
             return "GHOTA_EVENT_START_CHECK";
