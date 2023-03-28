@@ -103,6 +103,8 @@ ghota_client_handle_t *ghota_init(ghota_config_t *newconfig) {
     memcpy_str(handle->config.storagePartitionName, newconfig->storagePartitionName, 17);
 
     handle->config.xCoreID = newconfig->xCoreID;
+    handle->config.updateInterval = newconfig->updateInterval;
+    handle->result.flags = 0;
 
     if (newconfig->hostname == NULL)
         asprintf(&handle->config.hostname, CONFIG_GITHUB_HOSTNAME);
@@ -123,13 +125,10 @@ ghota_client_handle_t *ghota_init(ghota_config_t *newconfig) {
 
     if (semver_parse(app_desc->version, &handle->currentversion)) {
         ESP_LOGE(TAG, "Failed to parse current version");
-        ghota_free(handle);
         xSemaphoreGive(ghota_lock);
+        ghota_free(handle);
         return NULL;
     }
-
-    handle->result.flags = 0;
-    handle->config.updateInterval = newconfig->updateInterval;
 
     xSemaphoreGive(ghota_lock);
 
