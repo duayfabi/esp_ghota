@@ -16,33 +16,35 @@ ESP_EVENT_DECLARE_BASE(GHOTA_EVENTS);
  * These events are posted to the event loop to track progress of the OTA process
  */
 typedef enum {
-    GHOTA_EVENT_START_CHECK = 0x01,                /*!< Github OTA check started */
-    GHOTA_EVENT_CHECK_ERROR = 0x02,                /*!< Github OTA error during check */
-    GHOTA_EVENT_UPDATE_AVAILABLE = 0x04,           /*!< Github OTA update available */
-    GHOTA_EVENT_NO_UPDATE_AVAILABLE = 0x08,        /*!< Github OTA no update available */
-    GHOTA_EVENT_START_UPDATE = 0x10,               /*!< Github OTA update started */
-    GHOTA_EVENT_FINISH_UPDATE = 0x20,              /*!< Github OTA update finished */
-    GHOTA_EVENT_UPDATE_FAILED = 0x40,              /*!< Github OTA update failed */
-    GHOTA_EVENT_START_STORAGE_UPDATE = 0x80,       /*!< Github OTA storage update started. If the storage is mounted, you should unmount it when getting this call */
-    GHOTA_EVENT_FINISH_STORAGE_UPDATE = 0x100,     /*!< Github OTA storage update finished. You can mount the new storage after getting this call if needed */
-    GHOTA_EVENT_STORAGE_UPDATE_FAILED = 0x200,     /*!< Github OTA storage update failed */
-    GHOTA_EVENT_FIRMWARE_UPDATE_PROGRESS = 0x400,  /*!< Github OTA firmware update progress */
-    GHOTA_EVENT_STORAGE_UPDATE_PROGRESS = 0x800,   /*!< Github OTA storage update progress */
-    GHOTA_EVENT_PENDING_REBOOT = 0x1000,           /*!< Github OTA pending reboot */
+    GHOTA_EVENT_START_CHECK = 0x01,               /*!< Github OTA check started */
+    GHOTA_EVENT_CHECK_ERROR = 0x02,               /*!< Github OTA error during check */
+    GHOTA_EVENT_UPDATE_AVAILABLE = 0x04,          /*!< Github OTA update available */
+    GHOTA_EVENT_NO_UPDATE_AVAILABLE = 0x08,       /*!< Github OTA no update available */
+    GHOTA_EVENT_START_UPDATE = 0x10,              /*!< Github OTA update started */
+    GHOTA_EVENT_FINISH_UPDATE = 0x20,             /*!< Github OTA update finished */
+    GHOTA_EVENT_UPDATE_FAILED = 0x40,             /*!< Github OTA update failed */
+    GHOTA_EVENT_START_STORAGE_UPDATE = 0x80,      /*!< Github OTA storage update started. If the storage is mounted, you should unmount it when getting this call */
+    GHOTA_EVENT_FINISH_STORAGE_UPDATE = 0x100,    /*!< Github OTA storage update finished. You can mount the new storage after getting this call if needed */
+    GHOTA_EVENT_STORAGE_UPDATE_FAILED = 0x200,    /*!< Github OTA storage update failed */
+    GHOTA_EVENT_FIRMWARE_UPDATE_PROGRESS = 0x400, /*!< Github OTA firmware update progress */
+    GHOTA_EVENT_STORAGE_UPDATE_PROGRESS = 0x800,  /*!< Github OTA storage update progress */
+    GHOTA_EVENT_PENDING_REBOOT = 0x1000,          /*!< Github OTA pending reboot */
 } ghota_event_e;
 
 /**
  * @brief Github OTA Configuration
  */
 typedef struct ghota_config_t {
-    char fwFilenameMatch[CONFIG_MAX_FILENAME_LEN];    /*!< Filename to match against on Github indicating this is a firmware file */
+    char fwFilenameMatch[CONFIG_MAX_FILENAME_LEN];      /*!< Filename to match against on Github indicating this is a firmware file */
     char storageFilenameMatch[CONFIG_MAX_FILENAME_LEN]; /*!< Filename to match against on Github indicating this is a storage file */
-    char storagePartitionName[17];                  /*!< Name of the storage partition to update */
-    char *hostname;                                 /*!< Hostname of the Github server. Defaults to api.github.com*/
-    char *orgname;                                  /*!< Name of the Github organization */
-    char *reponame;                                 /*!< Name of the Github repository */
-    uint32_t updateInterval;                        /*!< Interval in Minutes to check for updates if using the ghota_start_update_timer function */
-    BaseType_t xCoreID;                             /*!< Core ID on which run the OTA task */
+    char storagePartitionName[17];                      /*!< Name of the storage partition to update */
+    char *hostname;                                     /*!< Hostname of the Github server. Defaults to api.github.com*/
+    char *orgname;                                      /*!< Name of the Github organization */
+    char *reponame;                                     /*!< Name of the Github repository */
+    uint32_t updateInterval;                            /*!< Interval in Minutes to check for updates if using the ghota_start_update_timer function */
+    BaseType_t xCoreID;                                 /*!< Core ID on which run the OTA task */
+    const char *cert_pem;                               /*!< SSL server certification, PEM format as string, if the client requires to verify server */
+    size_t cert_len;                                    /*!< Length of the buffer pointed to by cert_pem. May be 0 for null-terminated pem */
 } ghota_config_t;
 
 typedef struct ghota_client_handle_t ghota_client_handle_t;

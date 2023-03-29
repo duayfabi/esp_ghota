@@ -1,7 +1,6 @@
 #include "esp_ghota.h"
 
 #include <esp_app_format.h>
-#include <esp_crt_bundle.h>
 #include <esp_event.h>
 #include <esp_http_client.h>
 #include <esp_https_ota.h>
@@ -15,6 +14,10 @@
 #include <libgen.h>
 #include <sdkconfig.h>
 #include <stdlib.h>
+
+#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+#include <esp_crt_bundle.h>
+#endif
 
 #include "lwjson.h"
 
@@ -75,8 +78,8 @@ void memcpy_str(char *dest, const char *src, size_t n) {
         memcpy(dest, src, len);
         memset(dest + len, 0, n - len);
     } else {
-        memcpy(dest, src, n-1);
-        dest[n-1] = 0;
+        memcpy(dest, src, n - 1);
+        dest[n - 1] = 0;
     }
 }
 
@@ -101,9 +104,11 @@ ghota_client_handle_t *ghota_init(ghota_config_t *newconfig) {
     memcpy_str(handle->config.fwFilenameMatch, newconfig->fwFilenameMatch, CONFIG_MAX_FILENAME_LEN);
     memcpy_str(handle->config.storageFilenameMatch, newconfig->storageFilenameMatch, CONFIG_MAX_FILENAME_LEN);
     memcpy_str(handle->config.storagePartitionName, newconfig->storagePartitionName, 17);
-
+    
     handle->config.xCoreID = newconfig->xCoreID;
     handle->config.updateInterval = newconfig->updateInterval;
+    handle->config.cert_pem = newconfig->cert_pem;
+    handle->config.cert_len = newconfig->cert_len;
     handle->result.flags = 0;
 
     if (newconfig->hostname == NULL)
@@ -312,10 +317,18 @@ esp_err_t ghota_check(ghota_client_handle_t *handle) {
 
     esp_http_client_config_t httpconfig = {
         .url = url,
-        .crt_bundle_attach = esp_crt_bundle_attach,
         .event_handler = _http_event_handler,
         .user_data = &stream_parser,
     };
+
+    if (handle->config.cert_pem) {
+        httpconfig.cert_pem = handle->config.cert_pem;
+        httpconfig.cert_len = handle->config.cert_len;
+    } else {
+#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+        httpconfig.crt_bundle_attach = esp_crt_bundle_attach;
+#endif
+    }
 
     if (handle->username) {
         ESP_LOGD(TAG, "Using Authenticated Request to %s", url);
@@ -496,11 +509,18 @@ esp_err_t ghota_storage_update(ghota_client_handle_t *handle) {
     esp_http_client_config_t config = {
         .url = handle->result.storageUrl,
         .event_handler = _http_event_storage_handler,
-        .crt_bundle_attach = esp_crt_bundle_attach,
         .user_data = handle,
         .buffer_size_tx = 2048,
-
     };
+
+    if (handle->config.cert_pem) {
+        config.cert_pem = handle->config.cert_pem;
+        config.cert_len = handle->config.cert_len;
+    } else {
+#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+        config.crt_bundle_attach = esp_crt_bundle_attach;
+#endif
+    }
 
     if (handle->username) {
         ESP_LOGD(TAG, "Using Authenticated Request to %s", config.url);
@@ -558,10 +578,18 @@ esp_err_t ghota_update(ghota_client_handle_t *handle) {
 
     esp_http_client_config_t httpconfig = {
         .url = handle->result.fwUrl,
-        .crt_bundle_attach = esp_crt_bundle_attach,
         .keep_alive_enable = true,
         .buffer_size_tx = 4096,
     };
+
+    if (handle->config.cert_pem) {
+        httpconfig.cert_pem = handle->config.cert_pem;
+        httpconfig.cert_len = handle->config.cert_len;
+    } else {
+#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+        httpconfig.crt_bundle_attach = esp_crt_bundle_attach;
+#endif
+    }
 
     if (handle->username) {
         ESP_LOGD(TAG, "Using Authenticated Request to %s", httpconfig.url);
